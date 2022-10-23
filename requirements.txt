@@ -1,0 +1,5 @@
+vkbottle
+python-dotenv
+black
+sqlalchemy
+psycopg2-binary
