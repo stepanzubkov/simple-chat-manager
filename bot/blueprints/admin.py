@@ -1,3 +1,5 @@
+import re
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from vkbottle.bot import Blueprint, Message
@@ -15,13 +17,42 @@ async def ban(message: Message):
     members = await bp.api.messages.get_conversation_members(message.peer_id)
     admin_ids = [member.member_id for member in members.items if member.is_admin]
     session = Session(engine)
-    secondary_admins = select(Roles).where(Roles.role == "admin")
+    secondary_admins = select(Roles).where(
+        Roles.role == "admin",
+        Roles.conversation_id == message.peer_id,
+    )
     secondary_admin_ids = [admin.vk_id for admin in session.scalars(secondary_admins)]
 
     if message.from_id in admin_ids or message.from_id in secondary_admin_ids:
         if message.reply_message.from_id not in secondary_admin_ids + admin_ids:
             await bp.api.messages.remove_chat_user(
                 message.peer_id - 2000000000, message.reply_message.from_id
+            )
+            await message.reply(
+                "Пользователь успешно забанен. Пусть больше не возвращается."
+            )
+
+        else:
+            await message.reply("Админа невозможно забанить!")
+
+
+@bp.on.chat_message(regex=r"^(бан|кик|забанить) \[id(\d+)\|.+\]$")
+async def ban_by_mention(message: Message, match: tuple):
+    member_id = int(match[1])
+
+    members = await bp.api.messages.get_conversation_members(message.peer_id)
+    admin_ids = [member.member_id for member in members.items if member.is_admin]
+    session = Session(engine)
+    secondary_admins = select(Roles).where(
+        Roles.role == "admin",
+        Roles.conversation_id == message.peer_id,
+    )
+    secondary_admin_ids = [admin.vk_id for admin in session.scalars(secondary_admins)]
+
+    if message.from_id in admin_ids or message.from_id in secondary_admin_ids:
+        if member_id not in secondary_admin_ids + admin_ids:
+            await bp.api.messages.remove_chat_user(
+                message.peer_id - 2000000000, member_id=member_id
             )
             await message.reply(
                 "Пользователь успешно забанен. Пусть больше не возвращается."
