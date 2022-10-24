@@ -8,4 +8,5 @@ class Roles(Base):
 
     id = Column(Integer, primary_key=True)
     vk_id = Column(Integer)
+    conversation_id = Column(Integer)
     role = Column(String(30))

@@ -39,7 +39,11 @@ async def give_admin_role(message: Message):
         user_id = message.reply_message.from_id
         with Session(engine) as session:
 
-            role = Roles(vk_id=user_id, role="admin")
+            role = Roles(
+                vk_id=user_id,
+                conversation_id=message.peer_id,
+                role="admin",
+            )
 
             session.add(role)
             session.commit()
