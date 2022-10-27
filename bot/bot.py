@@ -1,7 +1,8 @@
 from config import VK_API_KEY
 from vkbottle.bot import Bot
 
-from blueprints import bps
+from blueprints.public.public import bp as public_bp
+from blueprints.admin import bp as admin_bp
 
 
 bot = Bot(
@@ -9,6 +10,7 @@ bot = Bot(
 )
 bot.labeler.vbml_ignore_case = True
 
+bps = [public_bp, admin_bp]
 for bp in bps:
     bp.load(bot)
 
