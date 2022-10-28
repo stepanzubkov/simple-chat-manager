@@ -63,3 +63,20 @@ async def list_admins(message: Message):
         message_text += f"*id{admin.id} ({admin.first_name} {admin.last_name}) \n"
 
     await message.reply(message_text)
+
+
+@bp.on.chat_message(text=["самобан", "самокик"])
+async def self_ban(message: Message):
+    """Bans author of message"""
+    admins = AdminsService(bp.api, message.peer_id)
+    all_admins = await admins.get_main_admins() + await admins.get_secondary_admins()
+    all_admin_ids = [admin.id for admin in all_admins]
+    if message.from_id not in all_admin_ids:
+        await bp.api.messages.remove_chat_user(
+            message.peer_id - 2000000000,
+            message.from_id,
+        )
+        await message.reply("Прощай...")
+
+    else:
+        await message.reply("Самобан не разрешён для админов")
