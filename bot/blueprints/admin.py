@@ -42,7 +42,7 @@ async def ban(message: Message, match: Optional[tuple] = None):
     VBMLRule(["дать админку", "выдать админку"])
     | RegexRule(re.compile(r"^(дать|выдать) админку \[id(\d+)\|.+\]$", re.IGNORECASE))
 )
-async def give_admin_role(message: Message, match: tuple):
+async def give_admin_role(message: Message, match: tuple = None):
     """Gives admin role by reply message or by mention"""
     member_id = int(match[1]) if match else message.reply_message.from_id
 
@@ -76,7 +76,7 @@ async def give_admin_role(message: Message, match: tuple):
         )
     )
 )
-async def delete_admin_role(message: Message, match: tuple):
+async def delete_admin_role(message: Message, match: tuple = None):
     """Deletes admin role by reply message or by mention"""
     member_id = int(match[1]) if match else message.reply_message.from_id
 
