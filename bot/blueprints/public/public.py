@@ -5,10 +5,13 @@ from pathlib import Path
 import os
 import random
 
+from sqlalchemy.orm import Session
 from vkbottle import PhotoMessageUploader
 from vkbottle.bot import Blueprint, Message
 
 from blueprints.public.services.admins import AdminsService
+from db.models import ConversationRules
+from db.base import engine
 
 bp = Blueprint("for public commands")
 bp.labeler.vbml_ignore_case = True
@@ -80,3 +83,13 @@ async def self_ban(message: Message):
 
     else:
         await message.reply("Самобан не разрешён для админов")
+
+
+@bp.on.chat_message(text="правила")
+async def get_rules(message: Message):
+    session = Session(engine)
+    rules = session.query(ConversationRules).filter_by(conversation_id=message.peer_id).first()
+    if rules:
+        await message.reply(f"Правила беседы: {rules.text}")
+    else:
+        await message.reply("Правила беседы ещё не установлены")

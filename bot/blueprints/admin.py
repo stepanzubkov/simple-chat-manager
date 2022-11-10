@@ -8,7 +8,7 @@ from vkbottle.dispatch.rules.base import VBMLRule, RegexRule
 
 from blueprints.public.services.admins import AdminsService
 from db.base import engine
-from db.models import Roles
+from db.models import Roles, ConversationRules
 
 bp = Blueprint("for admin commands")
 
@@ -100,3 +100,26 @@ async def delete_admin_role(message: Message, match: tuple = None):
                 )
             else:
                 await message.reply("У пользователя не было админки")
+
+@bp.on.chat_message(text="новые правила <new_rules>")
+async def new_rules(message: Message, new_rules: str):
+    admins = AdminsService(bp.api, message.peer_id)
+    all_admins = await admins.get_main_admins() + await admins.get_secondary_admins()
+    all_admin_ids = [admin.id for admin in all_admins]
+    if message.from_id in all_admin_ids:
+        session = Session(engine)
+        rules = session.query(ConversationRules).filter_by(conversation_id=message.peer_id).first()
+        if rules:
+            rules.text = new_rules
+
+            await message.reply("Правила беседы обновлены")
+        else:
+            rules = ConversationRules(conversation_id=message.peer_id, text=new_rules)
+            session.add(rules)
+
+            await message.reply("Правила беседы установлены")
+
+        
+        session.commit()
+        session.close()
+
