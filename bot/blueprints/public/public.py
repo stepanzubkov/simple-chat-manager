@@ -1,7 +1,6 @@
 """Public handlers"""
 
 from pathlib import Path
-
 import os
 import random
 
@@ -9,9 +8,10 @@ from sqlalchemy.orm import Session
 from vkbottle import PhotoMessageUploader
 from vkbottle.bot import Blueprint, Message
 
-from blueprints.public.services.admins import AdminsService
+from services.admins import AdminsService
 from db.models import ConversationRules
 from db.base import engine
+from db.crud.immunity import get_immunities
 
 bp = Blueprint("for public commands")
 bp.labeler.vbml_ignore_case = True
@@ -49,7 +49,7 @@ async def dog_image_random(message: Message):
     await message.answer(attachment=attachment)
 
 
-@bp.on.chat_message(text=["админы"])
+@bp.on.chat_message(text=["роли", "роли беседы"])
 async def list_admins(message: Message):
     """List main admins and secondary admins"""
 
@@ -64,6 +64,11 @@ async def list_admins(message: Message):
     secondary_admins = await admins.get_secondary_admins()
     for admin in secondary_admins:
         message_text += f"*id{admin.id} ({admin.first_name} {admin.last_name}) \n"
+
+    message_text += "\nИммунитет:\n"
+    immunities = await get_immunities(bp.api, message.peer_id)
+    for immunity in immunities:
+        message_text += f"*id{immunity.id} ({immunity.first_name} {immunity.last_name}) \n"
 
     await message.reply(message_text)
 

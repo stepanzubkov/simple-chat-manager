@@ -6,9 +6,10 @@ from sqlalchemy.orm import Session
 from vkbottle.bot import Blueprint, Message
 from vkbottle.dispatch.rules.base import VBMLRule, RegexRule
 
-from blueprints.public.services.admins import AdminsService
+from services.admins import AdminsService
 from db.base import engine
 from db.models import Roles, ConversationRules
+from db.crud.immunity import check_immunity, give_immunity, delete_immunity
 
 bp = Blueprint("for admin commands")
 
@@ -42,7 +43,7 @@ async def ban(message: Message, match: Optional[tuple] = None):
     VBMLRule(["дать админку", "выдать админку"])
     | RegexRule(re.compile(r"^(дать|выдать) админку \[id(\d+)\|.+\]$", re.IGNORECASE))
 )
-async def give_admin_role(message: Message, match: tuple = None):
+async def give_admin_role(message: Message, match: Optional[tuple] = None):
     """Gives admin role by reply message or by mention"""
     member_id = int(match[1]) if match else message.reply_message.from_id
 
@@ -76,7 +77,7 @@ async def give_admin_role(message: Message, match: tuple = None):
         )
     )
 )
-async def delete_admin_role(message: Message, match: tuple = None):
+async def delete_admin_role(message: Message, match: Optional[tuple] = None):
     """Deletes admin role by reply message or by mention"""
     member_id = int(match[1]) if match else message.reply_message.from_id
 
@@ -123,3 +124,45 @@ async def new_rules(message: Message, new_rules: str):
         session.commit()
         session.close()
 
+
+@bp.on.chat_message(
+    VBMLRule(["дать иммунитет", "выдать иммунитет"])
+    | RegexRule(re.compile(r"^(дать|выдать) иммунитет \[id(\d+)\|.+\]$", re.IGNORECASE))
+)
+async def give_immunity_role(message: Message, match: Optional[tuple] = None):
+    """Gives immunity role by reply message or by mention"""
+    member_id = int(match[1]) if match else message.reply_message.from_id
+
+    admins = AdminsService(bp.api, message.peer_id)
+    all_admins = await admins.get_main_admins() + await admins.get_secondary_admins()
+    all_admin_ids = [admin.id for admin in all_admins]
+    if message.from_id in all_admin_ids:
+        if check_immunity(member_id, message.peer_id):
+            await message.reply("У пользователя уже есть иммунитет.")
+        else:
+            give_immunity(member_id, message.peer_id)
+            await message.reply("Пользователю выдан иммунитет.")
+
+
+@bp.on.chat_message(
+    VBMLRule(["забрать иммунитет", "отобрать иммунитет", "убрать иммунитет"])
+    | RegexRule(
+        re.compile(
+            r"^(забрать|отобрать|убрать) иммунитет \[id(\d+)\|.+\]$", re.IGNORECASE
+        )
+    )
+)
+async def delete_immunity_role(message: Message, match: Optional[tuple] = None):
+    """Deletes immunity role by reply message or by mention"""
+    member_id = int(match[1]) if match else message.reply_message.from_id
+
+    admins = AdminsService(bp.api, message.peer_id)
+    all_admins = await admins.get_main_admins() + await admins.get_secondary_admins()
+    all_admin_ids = [admin.id for admin in all_admins]
+    if message.from_id in all_admin_ids:
+        if check_immunity(member_id, message.peer_id):
+            delete_immunity(member_id, message.peer_id)
+            user = (await bp.api.users.get(user_ids=member_id))[0]
+            await message.reply(f"*id{user.id} ({user.first_name} {user.last_name}), теперь у тебя нет иммунитета.")
+        else:
+            await message.reply("У пользователя нет иммунитета.")
