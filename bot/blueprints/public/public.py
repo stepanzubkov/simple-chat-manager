@@ -1,9 +1,8 @@
 """Public handlers"""
 
 from pathlib import Path
-import os
-import random
 
+import aiohttp
 from sqlalchemy.orm import Session
 from vkbottle import PhotoMessageUploader
 from vkbottle.bot import Blueprint, Message
@@ -12,6 +11,7 @@ from services.admins import AdminsService
 from db.models import ConversationRules
 from db.base import engine
 from db.crud.immunity import get_immunities
+import config
 
 bp = Blueprint("for public commands")
 bp.labeler.vbml_ignore_case = True
@@ -36,16 +36,30 @@ async def dog_image(message: Message):
 @bp.on.chat_message(text=["собака рандом", "собака случайная"])
 async def dog_image_random(message: Message):
     """Sends random dog image from 13 images"""
+    if not config.DOG_API_KEY:
+        await message.answer("Сервис для получения картинок собак ещё не сконфигурирован.")
+        return
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+            f"{config.DOG_API_PROVIDER_URL}v1/images/search?format=json&limit=1",
+            headers={
+                "x-api-key": config.DOG_API_KEY,
+            },
+        ) as response:
+
+            if response.status != 200:
+                await message.reply(f"Произошла ошибка с получением картинки собаки. Код ошибки: {response.status_code}")
+                return
+
+            async with session.get((await response.json())[0]["url"]) as image_response: 
+                image = await image_response.read()
+
+    with open("images/dog_temp.jpg", "wb") as temp:
+        temp.write(image)
 
     photo_uploader = PhotoMessageUploader(api=bp.api)
-
-    dog_images_path = Path("images")
-    dog_images = os.listdir(str(dog_images_path.resolve()))
-
-    random_dog = random.choice(dog_images)
-    attachment = await photo_uploader.upload(
-        str((dog_images_path / random_dog).resolve())
-    )
+    attachment = await photo_uploader.upload(str(Path("images/dog_temp.jpg").resolve()))
     await message.answer(attachment=attachment)
 
 
